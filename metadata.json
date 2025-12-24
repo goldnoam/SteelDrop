@@ -1,0 +1,5 @@
+{
+  "name": "Super Hero Coin Drop",
+  "description": "An arcade-style coin drop game where you win superhero cards, extra coins, or nothing based on a 3-second randomized path.",
+  "requestFramePermissions": []
+}

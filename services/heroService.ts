@@ -1,0 +1,88 @@
+
+import { HeroCard } from "../types";
+
+const HERO_DATABASE: Omit<HeroCard, 'id' | 'imageUrl'>[] = [
+  {
+    name: "איש הפלדה (Steel Titan)",
+    power: "תעופה, חסינות מוחלטת וראיית לייזר",
+    rarity: "Mythic",
+    description: "השורד האחרון מכוכב רחוק, המגן האולטימטיבי של האנושות."
+  },
+  {
+    name: "אביר הלילה (Dark Sentinel)",
+    power: "אומנויות לחימה, גאדג'טים מתקדמים ואינטלקט שיא",
+    rarity: "Epic",
+    description: "מיליארדר שהפך ללוחם צדק המסתתר בצללים של העיר הגדולה."
+  },
+  {
+    name: "האל המרעם (Thunder King)",
+    power: "שליטה בברקים ופטיש קוסמי",
+    rarity: "Legendary",
+    description: "נסיך מממלכה שמימית המגן על כדור הארץ בעזרת זעם השמיים."
+  },
+  {
+    name: "לוחמת האמזונות (Star Warrior)",
+    power: "כוח על-אנושי ולאסו של אמת",
+    rarity: "Epic",
+    description: "נסיכה לוחמת שהגיעה מאי מבודד כדי להביא שלום לעולם הגברים."
+  },
+  {
+    name: "הרץ המהיר (Volt Runner)",
+    power: "תנועה במהירות האור",
+    rarity: "Rare",
+    description: "מסוגל לחצות יבשות בשניות ולחזור אחורה בזמן."
+  },
+  {
+    name: "מלך המצולות (Deep Sovereign)",
+    power: "תקשורת עם יצורי ים ושליטה בזרמים",
+    rarity: "Rare",
+    description: "שליט שבעת הימים המסוגל לזמן את עוצמת האוקיינוס."
+  },
+  {
+    name: "קשת הצללים (Arrow Ghost)",
+    power: "דיוק מושלם וחושים מחודדים",
+    rarity: "Common",
+    description: "צייד מיומן שלעולם לא מחטיא את המטרה שלו."
+  },
+  {
+    name: "הענק הירוק (Gamma Titan)",
+    power: "כוח פיזי אינסופי המושפע מזעם",
+    rarity: "Epic",
+    description: "מדען שהפך למפלצת זעם בלתי ניתנת לעצירה בעקבות תאונת קרינה."
+  },
+  {
+    name: "אורג הקורין (Spider Weaver)",
+    power: "טיפוס על קירות וחוש שישי",
+    rarity: "Common",
+    description: "נער צעיר עם כוחות של עכביש המגן על השכונה שלו."
+  },
+  {
+    name: "המכשף העליון (Cosmic Mystic)",
+    power: "מניפולציה של זמן ומרחב",
+    rarity: "Legendary",
+    description: "מגן הממד שלנו מפני איומים קוסמיים בלתי נתפסים."
+  },
+  {
+    name: "הישות הנצחית (Eternal Nexus)",
+    power: "שליטה בחומר ובאנרגיה ברמה אטומית",
+    rarity: "Mythic",
+    description: "ישות עתיקה שקיימת מאז המפץ הגדול וצופה בהתפתחות היקום."
+  }
+];
+
+export const getLocalHeroCard = async (): Promise<HeroCard> => {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  const randomIndex = Math.floor(Math.random() * HERO_DATABASE.length);
+  const baseHero = HERO_DATABASE[randomIndex];
+  const id = Math.random().toString(36).substr(2, 9);
+  
+  const randomSeed = Math.floor(Math.random() * 5000);
+  const imageUrl = `https://picsum.photos/seed/${randomSeed}/400/600`;
+
+  return {
+    id,
+    ...baseHero,
+    imageUrl
+  };
+};
