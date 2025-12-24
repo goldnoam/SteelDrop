@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HeroCard, Slot, RewardType, GameState } from './types';
 import { getLocalHeroCard } from './services/heroService';
 import { sounds } from './services/audioService';
@@ -7,7 +7,7 @@ import HeroGallery from './components/HeroGallery';
 import GameBoard from './components/GameBoard';
 
 const INITIAL_COINS = 20;
-const STORAGE_KEY = 'super_hero_coin_drop_v6';
+const STORAGE_KEY = 'super_hero_coin_drop_v7';
 
 const SLOTS: Slot[] = [
   { id: 0, type: 'EMPTY', label: 'מחסן ריק', color: 'bg-slate-700' },
@@ -53,10 +53,14 @@ const App: React.FC = () => {
   const [currentWin, setCurrentWin] = useState<CurrentWin | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLuckyNext, setIsLuckyNext] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  // Add theme state (default dark)
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Add dropper position state for WASD controls
+  const [dropperX, setDropperX] = useState(50);
 
-  // Animated Coin Counter effect
   useEffect(() => {
-    if (displayCoins !== gameState.coins) {
+    if (!isPaused && displayCoins !== gameState.coins) {
       const timeout = setTimeout(() => {
         const diff = gameState.coins - displayCoins;
         const step = diff > 0 ? 1 : -1;
@@ -64,16 +68,15 @@ const App: React.FC = () => {
       }, 40);
       return () => clearTimeout(timeout);
     }
-  }, [gameState.coins, displayCoins]);
+  }, [gameState.coins, displayCoins, isPaused]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
   }, [gameState]);
 
   const dropCoin = useCallback(async () => {
-    if (gameState.coins <= 0 || gameState.isDropping) return;
+    if (gameState.coins <= 0 || gameState.isDropping || isPaused) return;
 
-    // Check for Lucky Drop (7% chance)
     const luckyRoll = Math.random() < 0.07;
     setIsLuckyNext(luckyRoll);
 
@@ -91,15 +94,35 @@ const App: React.FC = () => {
     setTimeout(async () => {
       handleLanding(randomIdx, luckyRoll);
     }, 3000);
-  }, [gameState.coins, gameState.isDropping]);
+  }, [gameState.coins, gameState.isDropping, isPaused]);
+
+  // Handle WASD Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPaused) return;
+      switch (e.key.toLowerCase()) {
+        case 'a':
+          setDropperX(prev => Math.max(5, prev - 5));
+          break;
+        case 'd':
+          setDropperX(prev => Math.min(95, prev + 5));
+          break;
+        case 'w':
+        case 's':
+          dropCoin();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPaused, dropCoin]);
 
   const handleLanding = async (slotIdx: number, isLucky: boolean) => {
     let slot = SLOTS[slotIdx];
     setTargetSlot(null);
 
-    // If it was a lucky drop, we force a win if it was empty
     if (isLucky && slot.type === 'EMPTY') {
-      slot = SLOTS[Math.random() < 0.5 ? 2 : 4]; // Force hero or high coins
+      slot = SLOTS[Math.random() < 0.5 ? 2 : 4];
     }
 
     let hero: HeroCard | null = null;
@@ -107,9 +130,8 @@ const App: React.FC = () => {
     let streakBonus = 0;
 
     if (slot.type !== 'EMPTY') {
-      // Build streak
       const newStreak = gameState.streak + 1;
-      if (newStreak >= 3) streakBonus = 2; // +2 coin efficiency bonus for streaks
+      if (newStreak >= 3) streakBonus = 2;
 
       if (slot.type === 'HERO') {
         setIsGenerating(true);
@@ -117,7 +139,6 @@ const App: React.FC = () => {
         setCurrentWin(null); 
         
         hero = await getLocalHeroCard();
-        // Lucky hero is guaranteed Mythic or Legendary
         if (isLucky && hero) {
           hero.rarity = Math.random() > 0.5 ? 'Mythic' : 'Legendary';
           hero.name = "✨ " + hero.name;
@@ -137,7 +158,7 @@ const App: React.FC = () => {
         setIsGenerating(false);
       } else {
         coinBonus = slot.id === 4 ? 10 : 5;
-        if (isLucky) coinBonus += 40; // Mega lucky bonus
+        if (isLucky) coinBonus += 40;
 
         const totalCoins = coinBonus + streakBonus;
         const winData: CurrentWin = { type: 'COINS', hero: null, coins: totalCoins, isLucky, streakBonus };
@@ -154,7 +175,6 @@ const App: React.FC = () => {
         setShowRewardModal(true);
       }
     } else {
-      // Break streak
       setCurrentWin({ type: 'EMPTY', hero: null, coins: 0, isLucky: false, streakBonus: 0 });
       setGameState(prev => ({ ...prev, isDropping: false, lastReward: 'EMPTY', streak: 0 }));
       sounds.miss();
@@ -194,12 +214,13 @@ const App: React.FC = () => {
       localStorage.removeItem(STORAGE_KEY);
       setCurrentWin(null);
       setDisplayCoins(INITIAL_COINS);
+      setIsPaused(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 md:p-8 select-none text-slate-100">
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8 bg-slate-900/60 backdrop-blur-xl p-6 rounded-3xl border border-slate-700 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+    <div className={`min-h-screen flex flex-col items-center p-4 md:p-8 select-none transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <header className={`w-full max-w-4xl flex justify-between items-center mb-8 backdrop-blur-xl p-6 rounded-3xl border shadow-[0_0_40px_rgba(0,0,0,0.5)] ${isDarkMode ? 'bg-slate-900/60 border-slate-700' : 'bg-white/80 border-slate-200'}`}>
         <div className="flex flex-col">
           <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 via-cyan-400 to-emerald-400 uppercase tracking-tighter italic">
             STEEL DROP
@@ -207,7 +228,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2">
             <p className="text-[10px] text-slate-500 font-black tracking-[0.2em] uppercase">מערכת ניהול מחסן גיבורים</p>
             {gameState.streak > 0 && (
-              <span className="bg-indigo-500 text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">
+              <span className="bg-indigo-500 text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse text-white">
                 STREAK: {gameState.streak}
               </span>
             )}
@@ -215,15 +236,21 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4 md:gap-8">
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`p-3 rounded-xl border transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">מטבעות ברשותך</span>
+            <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">מטבעות</span>
             <span className={`text-3xl font-black transition-colors duration-300 ${displayCoins > gameState.coins ? 'text-red-400' : displayCoins < gameState.coins ? 'text-emerald-400' : 'text-amber-400'} drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]`}>
               {displayCoins}
             </span>
           </div>
           <div className="h-12 w-[2px] bg-slate-800 rounded-full"></div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">מלאי במחסן</span>
+            <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">גיבורים</span>
             <span className="text-3xl font-black text-indigo-400 drop-shadow-[0_0_15_rgba(129,140,248,0.4)]">
               {gameState.collection.length}
             </span>
@@ -235,51 +262,94 @@ const App: React.FC = () => {
         <aside className="lg:col-span-4 order-2 lg:order-1 flex flex-col gap-4">
           <HeroGallery heroes={gameState.collection} />
           
-          <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-3">
+          <div className={`p-5 rounded-2xl border text-xs space-y-3 ${isDarkMode ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}>
+             <div className="flex gap-2 mb-2">
+               <button 
+                onClick={() => setIsPaused(!isPaused)}
+                className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${isPaused ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'}`}
+               >
+                 {isPaused ? 'המשך' : 'השהה'}
+               </button>
+               <button 
+                onClick={resetGame}
+                className="flex-1 py-3 bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 text-red-500 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest"
+               >
+                 איפוס
+               </button>
+             </div>
+             
              {gameState.streak >= 3 && (
-                <div className="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl mb-2 flex items-center gap-3">
+                <div className="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl flex items-center gap-3">
                   <div className="text-xl">🚀</div>
                   <div>
-                    <p className="font-black text-indigo-300 uppercase tracking-tighter">בונוס יעילות מחסן!</p>
-                    <p className="text-[9px] opacity-70 italic">+2 מטבעות על כל זכייה</p>
+                    <p className="font-black text-indigo-300 uppercase tracking-tighter text-right">בונוס יעילות!</p>
+                    <p className="text-[9px] opacity-70 text-right">+2 מטבעות לזכייה</p>
                   </div>
                 </div>
               )}
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <span className="font-black text-slate-200">סטטוס מחסן:</span>
-              <span className="text-emerald-400 animate-pulse font-bold uppercase tracking-widest">Active</span>
+              <span className={`font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>סטטוס:</span>
+              <span className={`font-bold uppercase tracking-widest ${isPaused ? 'text-amber-500' : 'text-emerald-400 animate-pulse'}`}>
+                {isPaused ? 'Paused' : 'Active'}
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px] uppercase font-bold">
-              <div className="bg-slate-800/50 p-2 rounded">רצף זכיות: {gameState.streak}</div>
-              <div className="bg-slate-800/50 p-2 rounded">מטבעות: {gameState.coins}</div>
-            </div>
-            <button 
-              onClick={resetGame}
-              className="w-full py-2 bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 text-red-500 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest"
-            >
-              מחיקה מוחלטת של המחסן
-            </button>
           </div>
         </aside>
 
         <section className="lg:col-span-8 order-1 lg:order-2 flex flex-col items-center gap-8">
           <div className={`relative w-full aspect-[4/5] md:aspect-[3/4] max-w-lg bg-slate-950 rounded-[2.5rem] border-[12px] transition-colors duration-1000 ${isLuckyNext ? 'border-amber-500 shadow-[0_0_80px_rgba(245,158,11,0.4)]' : 'border-slate-900 shadow-[0_0_80px_rgba(0,0,0,0.8)]'} overflow-hidden`}>
+            {isPaused && (
+              <div className="absolute inset-0 bg-black/60 z-[50] flex items-center justify-center backdrop-blur-sm">
+                <span className="text-6xl font-black italic text-white/50 tracking-widest uppercase">PAUSED</span>
+              </div>
+            )}
             {isLuckyNext && (
               <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[40] bg-amber-500 text-slate-950 px-6 py-1 rounded-full font-black text-xs uppercase tracking-widest animate-bounce shadow-[0_0_20px_rgba(245,158,11,0.8)]">
                 ✨ LUCKY DROP ACTIVE ✨
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-transparent pointer-events-none z-10"></div>
-            <GameBoard isDropping={gameState.isDropping} targetSlotIndex={targetSlot} slots={SLOTS} />
+            {/* Added dropperX prop to GameBoard */}
+            <GameBoard isDropping={gameState.isDropping && !isPaused} targetSlotIndex={targetSlot} slots={SLOTS} dropperX={dropperX} />
           </div>
 
           <div className="w-full max-w-lg">
+            {/* Mobile WASD Controls */}
+            <div className="flex justify-center gap-4 mb-6 lg:hidden">
+              <button 
+                onClick={() => setDropperX(prev => Math.max(5, prev - 5))}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              >
+                A
+              </button>
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={dropCoin}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                >
+                  W
+                </button>
+                <button 
+                  onClick={dropCoin}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                >
+                  S
+                </button>
+              </div>
+              <button 
+                onClick={() => setDropperX(prev => Math.min(95, prev + 5))}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              >
+                D
+              </button>
+            </div>
+
             <button
               onClick={dropCoin}
-              disabled={gameState.isDropping || gameState.coins <= 0}
+              disabled={gameState.isDropping || gameState.coins <= 0 || isPaused}
               className={`
                 w-full py-8 rounded-3xl text-3xl font-black uppercase tracking-widest transition-all duration-500 transform
-                ${gameState.isDropping || gameState.coins <= 0
+                ${(gameState.isDropping || gameState.coins <= 0 || isPaused)
                   ? 'bg-slate-800/50 text-slate-700 cursor-not-allowed scale-95 opacity-50'
                   : 'bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-slate-900 shadow-[0_20px_50px_rgba(245,158,11,0.3)] hover:scale-[1.03] active:scale-95 hover:shadow-amber-500/40 ring-4 ring-amber-500/20'}
               `}
@@ -289,9 +359,8 @@ const App: React.FC = () => {
                   <div className="w-6 h-6 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
                   מעבד...
                 </span>
-              ) : gameState.coins <= 0 ? 'המחסן ריק' : 'הטלת מטבע'}
+              ) : isPaused ? 'מושעה' : gameState.coins <= 0 ? 'המחסן ריק' : 'הטלת מטבע'}
             </button>
-            <p className="text-center mt-4 text-[10px] text-slate-600 font-bold uppercase tracking-widest">כל הטלה עולה 1 מטבע מהמלאי</p>
           </div>
         </section>
       </main>
@@ -302,43 +371,21 @@ const App: React.FC = () => {
             {isGenerating ? (
               <div className="py-20 flex flex-col items-center">
                 <div className="w-24 h-24 border-[6px] border-indigo-500 border-t-transparent rounded-full animate-spin mb-8 shadow-[0_0_30px_rgba(99,102,241,0.4)]"></div>
-                <h3 className="text-2xl font-black text-indigo-400 animate-pulse">גיבור בדרך למחסן...</h3>
-                <p className="text-slate-500 mt-3 text-sm font-bold uppercase tracking-tighter">רישום זכויות דיגיטליות</p>
+                <h3 className="text-2xl font-black text-indigo-400 animate-pulse">מגייס גיבור-על...</h3>
               </div>
             ) : (
               <>
-                <div className={`absolute -top-10 -left-10 w-40 h-40 ${currentWin?.isLucky ? 'bg-amber-500/20' : 'bg-indigo-500/10'} rounded-full blur-3xl`}></div>
-                <div className={`absolute -bottom-10 -right-10 w-40 h-40 ${currentWin?.isLucky ? 'bg-amber-500/20' : 'bg-indigo-500/10'} rounded-full blur-3xl`}></div>
-                
-                {currentWin?.isLucky && (
-                   <div className="absolute top-4 left-0 right-0 overflow-hidden pointer-events-none h-24">
-                      <div className="flex justify-around animate-bounce">
-                        {[...Array(10)].map((_, i) => <span key={i} className="text-amber-500 opacity-50">✨</span>)}
-                      </div>
-                   </div>
-                )}
-
                 <h2 className={`text-5xl font-black mb-4 uppercase tracking-tighter italic ${currentWin?.isLucky ? 'text-amber-400' : 'text-white'}`}>
-                  {currentWin?.isLucky ? 'מזל אדיר!' : 
-                   currentWin?.type === 'HERO' ? 'גיוס מוצלח!' : 
-                   currentWin?.type === 'COINS' ? 'בונוס מלאי!' : 'הטלה ריקה'}
+                  {currentWin?.isLucky ? 'מזל אדיר!' : currentWin?.type === 'HERO' ? 'גיוס מוצלח!' : currentWin?.type === 'COINS' ? 'בונוס!' : 'ריק'}
                 </h2>
-
-                {gameState.streak >= 2 && currentWin?.type !== 'EMPTY' && (
-                  <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-6 animate-pulse">
-                    רצף של {gameState.streak} זכיות!
-                  </div>
-                )}
                 
                 {currentWin?.type === 'HERO' && currentWin.hero && (
-                  <div className="mb-8 group cursor-default">
-                    <div className={`relative rounded-3xl overflow-hidden bg-slate-800 p-3 shadow-2xl ring-4 ${currentWin.isLucky ? 'ring-amber-500 shadow-amber-500/20' : 'ring-indigo-500/30'} transition-all`}>
+                  <div className="mb-8">
+                    <div className={`relative rounded-3xl overflow-hidden bg-slate-800 p-3 shadow-2xl ring-4 ${currentWin.isLucky ? 'ring-amber-500' : 'ring-indigo-500/30'}`}>
+                      {/* Fixed: changed selectedHero.name to currentWin.hero.name */}
                       <img src={currentWin.hero.imageUrl} alt={currentWin.hero.name} className="w-full aspect-[4/5] object-cover rounded-2xl mb-4" />
                       <h3 className={`text-3xl font-black leading-none mb-2 ${getHeroNameClass(currentWin.hero.rarity)}`}>{currentWin.hero.name}</h3>
-                      <p className="text-sm text-slate-400 mt-2 px-4 italic leading-relaxed">"{currentWin.hero.description}"</p>
-                      
                       <div className="flex justify-between items-center px-6 py-4 mt-4 bg-slate-950/50 rounded-2xl">
-                        <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest">{currentWin.hero.power}</span>
                         <span className={`inline-block px-4 py-1.5 rounded-lg text-xs font-black uppercase shadow-lg ${getRarityClass(currentWin.hero.rarity)}`}>
                           {currentWin.hero.rarity}
                         </span>
@@ -349,34 +396,25 @@ const App: React.FC = () => {
 
                 {currentWin?.type === 'COINS' && (
                   <div className="mb-10 py-12 flex flex-col items-center">
-                    <div className={`text-9xl mb-6 drop-shadow-[0_0_30px_rgba(251,191,36,0.6)] ${currentWin.isLucky ? 'animate-bounce' : 'animate-bounce-gentle'}`}>
-                      {currentWin.isLucky ? '🏆' : '💰'}
-                    </div>
-                    <p className={`text-4xl font-black ${currentWin.isLucky ? 'text-amber-400' : 'text-white'}`}>
-                      +{currentWin.coins} יחידות מלאי
-                    </p>
-                    {currentWin.streakBonus > 0 && (
-                      <p className="text-indigo-400 text-[10px] font-black uppercase mt-1">כולל +{currentWin.streakBonus} בונוס רצף</p>
-                    )}
-                    <p className="text-slate-500 mt-4 text-sm font-bold uppercase tracking-[0.2em]">המחסן עודכן בהצלחה</p>
+                    <div className="text-9xl mb-6 animate-bounce-gentle">{currentWin.isLucky ? '🏆' : '💰'}</div>
+                    <p className="text-4xl font-black text-white">+{currentWin.coins} מטבעות</p>
                   </div>
                 )}
 
                 {currentWin?.type === 'EMPTY' && (
-                  <div className="mb-10 py-16 flex flex-col items-center opacity-30 grayscale">
+                  <div className="mb-10 py-16 flex flex-col items-center opacity-30">
                     <div className="text-9xl mb-6">📦</div>
-                    <p className="text-2xl font-black text-slate-100 uppercase italic">מחסן ריק</p>
-                    <p className="text-xs font-bold mt-2">רצף הזכיות נקטע</p>
+                    <p className="text-2xl font-black uppercase text-white">מחסן ריק</p>
                   </div>
                 )}
 
                 <button
                   onClick={() => { setShowRewardModal(false); setCurrentWin(null); }}
-                  className={`w-full py-5 text-white text-xl font-black rounded-2xl transition-all shadow-xl active:scale-95 ${
-                    currentWin?.isLucky ? 'bg-gradient-to-r from-amber-500 to-orange-600' : 'bg-gradient-to-r from-indigo-600 to-indigo-800'
+                  className={`w-full py-5 text-white text-xl font-black rounded-2xl transition-all shadow-xl ${
+                    currentWin?.isLucky ? 'bg-amber-600' : 'bg-indigo-600'
                   }`}
                 >
-                  המשך בניהול המחסן
+                  המשך
                 </button>
               </>
             )}
@@ -384,9 +422,9 @@ const App: React.FC = () => {
         </div>
       )}
       
-      <footer className="mt-auto py-8 text-center text-slate-600">
-        <p className="text-xs font-black tracking-widest opacity-50 uppercase">© NOAM GOLD AI 2025 • ALL RIGHTS RESERVED</p>
-        <p className="text-[10px] mt-1 font-bold uppercase">WAREHOUSE STATUS: ENHANCED</p>
+      {/* Footer updated as requested */}
+      <footer className="mt-auto py-8 text-center text-slate-500">
+        <p className="text-xs font-black tracking-widest uppercase">(C) Noam Gold AI 2025 Send Feedback goldnoamai@gmail.com</p>
       </footer>
     </div>
   );

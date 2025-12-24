@@ -7,15 +7,17 @@ interface GameBoardProps {
   isDropping: boolean;
   targetSlotIndex: number | null;
   slots: Slot[];
+  dropperX: number; // Added dropperX prop
 }
 
-const GameBoard: React.FC<GameBoardProps> = ({ isDropping, targetSlotIndex, slots }) => {
+const GameBoard: React.FC<GameBoardProps> = ({ isDropping, targetSlotIndex, slots, dropperX }) => {
   const [coinPos, setCoinPos] = useState<{ x: number; y: number; rotate: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isDropping && targetSlotIndex !== null) {
-      setCoinPos({ x: 50, y: 5, rotate: 0 });
+      // Use dropperX for starting horizontal position
+      setCoinPos({ x: dropperX, y: 5, rotate: 0 });
 
       const duration = 3000;
       const startTime = Date.now();
@@ -23,20 +25,19 @@ const GameBoard: React.FC<GameBoardProps> = ({ isDropping, targetSlotIndex, slot
       const slotWidth = 100 / slots.length;
       const targetX = (targetSlotIndex * slotWidth) + (slotWidth / 2);
       
-      const numBounces = 12; // Increased for more chaotic path
+      const numBounces = 12; 
       const bouncePoints: {x: number, y: number, r: number}[] = [];
       
-      bouncePoints.push({ x: 50, y: 5, r: 0 });
+      // Starting point using dropperX
+      bouncePoints.push({ x: dropperX, y: 5, r: 0 });
       
       for (let i = 1; i < numBounces; i++) {
         const rowY = (i / numBounces) * 88 + 5;
-        // More drastic randomness in the middle of the board
         const randomnessScale = Math.sin((i / numBounces) * Math.PI) * 45;
         const randomXOffset = (Math.random() - 0.5) * randomnessScale;
         
-        // Dynamic pull factor
         const pull = Math.pow(i / numBounces, 1.5);
-        const currentTargetX = 50 + (targetX - 50) * pull;
+        const currentTargetX = dropperX + (targetX - dropperX) * pull;
         
         bouncePoints.push({ 
           x: Math.max(5, Math.min(95, currentTargetX + randomXOffset)), 
@@ -60,9 +61,8 @@ const GameBoard: React.FC<GameBoardProps> = ({ isDropping, targetSlotIndex, slot
         const start = bouncePoints[segmentIdx];
         const end = bouncePoints[segmentIdx + 1] || start;
 
-        // Quadratic Ease for Y within segment to simulate gravity/bounce
         const t = segmentProgress;
-        const easeT = t * t * (3 - 2 * t); // Smoothstep
+        const easeT = t * t * (3 - 2 * t); 
 
         const currentX = start.x + (end.x - start.x) * easeT;
         const currentY = start.y + (end.y - start.y) * segmentProgress;
@@ -84,10 +84,20 @@ const GameBoard: React.FC<GameBoardProps> = ({ isDropping, targetSlotIndex, slot
     } else {
       setCoinPos(null);
     }
-  }, [isDropping, targetSlotIndex, slots.length]);
+  }, [isDropping, targetSlotIndex, slots.length, dropperX]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full flex flex-col bg-slate-950">
+      {/* Dropper Indicator */}
+      {!isDropping && (
+        <div 
+          className="absolute top-1 w-8 h-4 bg-amber-500 rounded-full -ml-4 z-40 shadow-[0_0_15px_rgba(245,158,11,0.6)] transition-all duration-150"
+          style={{ left: `${dropperX}%` }}
+        >
+          <div className="w-full h-full animate-pulse border border-white/30 rounded-full"></div>
+        </div>
+      )}
+
       {/* Peg Grid with Glow */}
       <div className="absolute inset-0 grid grid-cols-7 grid-rows-12 p-8 gap-x-8 gap-y-12 pointer-events-none opacity-40">
         {Array.from({ length: 84 }).map((_, i) => (

@@ -3,43 +3,43 @@ import { HeroCard } from "../types";
 
 const HERO_DATABASE: Omit<HeroCard, 'id' | 'imageUrl'>[] = [
   {
-    name: "איש הפלדה (Steel Titan)",
+    name: "סופרמן (Steel Titan)",
     power: "תעופה, חסינות מוחלטת וראיית לייזר",
     rarity: "Mythic",
     description: "השורד האחרון מכוכב רחוק, המגן האולטימטיבי של האנושות."
   },
   {
-    name: "אביר הלילה (Dark Sentinel)",
+    name: "באטמן (Dark Sentinel)",
     power: "אומנויות לחימה, גאדג'טים מתקדמים ואינטלקט שיא",
     rarity: "Epic",
-    description: "מיליארדר שהפך ללוחם צדק המסתתר בצללים של העיר הגדולה."
+    description: "מיליארדר שהפך ללוחם צדק המסתתר בצללים של העיר גדולה."
   },
   {
-    name: "האל המרעם (Thunder King)",
+    name: "ת'ור (Thunder King)",
     power: "שליטה בברקים ופטיש קוסמי",
     rarity: "Legendary",
     description: "נסיך מממלכה שמימית המגן על כדור הארץ בעזרת זעם השמיים."
   },
   {
-    name: "לוחמת האמזונות (Star Warrior)",
+    name: "וונדר וומן (Star Warrior)",
     power: "כוח על-אנושי ולאסו של אמת",
     rarity: "Epic",
     description: "נסיכה לוחמת שהגיעה מאי מבודד כדי להביא שלום לעולם הגברים."
   },
   {
-    name: "הרץ המהיר (Volt Runner)",
+    name: "פלאש (Volt Runner)",
     power: "תנועה במהירות האור",
     rarity: "Rare",
     description: "מסוגל לחצות יבשות בשניות ולחזור אחורה בזמן."
   },
   {
-    name: "מלך המצולות (Deep Sovereign)",
+    name: "אקווהמן (Deep Sovereign)",
     power: "תקשורת עם יצורי ים ושליטה בזרמים",
     rarity: "Rare",
     description: "שליט שבעת הימים המסוגל לזמן את עוצמת האוקיינוס."
   },
   {
-    name: "קשת הצללים (Arrow Ghost)",
+    name: "החץ הירוק (Arrow Ghost)",
     power: "דיוק מושלם וחושים מחודדים",
     rarity: "Common",
     description: "צייד מיומן שלעולם לא מחטיא את המטרה שלו."
@@ -51,22 +51,16 @@ const HERO_DATABASE: Omit<HeroCard, 'id' | 'imageUrl'>[] = [
     description: "מדען שהפך למפלצת זעם בלתי ניתנת לעצירה בעקבות תאונת קרינה."
   },
   {
-    name: "אורג הקורין (Spider Weaver)",
+    name: "ספיידרמן (Spider Weaver)",
     power: "טיפוס על קירות וחוש שישי",
     rarity: "Common",
     description: "נער צעיר עם כוחות של עכביש המגן על השכונה שלו."
   },
   {
-    name: "המכשף העליון (Cosmic Mystic)",
+    name: "דוקטור סטריינג' (Cosmic Mystic)",
     power: "מניפולציה של זמן ומרחב",
     rarity: "Legendary",
     description: "מגן הממד שלנו מפני איומים קוסמיים בלתי נתפסים."
-  },
-  {
-    name: "הישות הנצחית (Eternal Nexus)",
-    power: "שליטה בחומר ובאנרגיה ברמה אטומית",
-    rarity: "Mythic",
-    description: "ישות עתיקה שקיימת מאז המפץ הגדול וצופה בהתפתחות היקום."
   }
 ];
 
