@@ -382,7 +382,6 @@ const App: React.FC = () => {
                 {currentWin?.type === 'HERO' && currentWin.hero && (
                   <div className="mb-8">
                     <div className={`relative rounded-3xl overflow-hidden bg-slate-800 p-3 shadow-2xl ring-4 ${currentWin.isLucky ? 'ring-amber-500' : 'ring-indigo-500/30'}`}>
-                      {/* Fixed: changed selectedHero.name to currentWin.hero.name */}
                       <img src={currentWin.hero.imageUrl} alt={currentWin.hero.name} className="w-full aspect-[4/5] object-cover rounded-2xl mb-4" />
                       <h3 className={`text-3xl font-black leading-none mb-2 ${getHeroNameClass(currentWin.hero.rarity)}`}>{currentWin.hero.name}</h3>
                       <div className="flex justify-between items-center px-6 py-4 mt-4 bg-slate-950/50 rounded-2xl">
@@ -422,7 +421,6 @@ const App: React.FC = () => {
         </div>
       )}
       
-      {/* Footer updated as requested */}
       <footer className="mt-auto py-8 text-center text-slate-500">
         <p className="text-xs font-black tracking-widest uppercase">(C) Noam Gold AI 2025 Send Feedback goldnoamai@gmail.com</p>
       </footer>
